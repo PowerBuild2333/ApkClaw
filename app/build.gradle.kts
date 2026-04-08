@@ -1,4 +1,6 @@
-import jdk.internal.net.http.common.Log.channel
+好，这是修改后的完整 `app/build.gradle.kts`：
+
+```kotlin
 import org.jetbrains.kotlin.konan.properties.hasProperty
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -9,7 +11,6 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
 }
-
 
 android {
     namespace = "com.apk.claw.android"
@@ -24,10 +25,19 @@ android {
             val props = Properties().apply {
                 rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
             }
-            storeFile = file(props.getProperty("KEYSTORE_FILE", ""))
-            storePassword = props.getProperty("KEYSTORE_PASSWORD", "")
-            keyAlias = props.getProperty("KEY_ALIAS", "")
-            keyPassword = props.getProperty("KEY_PASSWORD", "")
+            val keystoreFile = props.getProperty("KEYSTORE_FILE", "")
+            if (keystoreFile.isNotEmpty() && rootProject.file(keystoreFile).exists()) {
+                storeFile = rootProject.file(keystoreFile)
+                storePassword = props.getProperty("KEYSTORE_PASSWORD", "")
+                keyAlias = props.getProperty("KEY_ALIAS", "")
+                keyPassword = props.getProperty("KEY_PASSWORD", "")
+            } else {
+                // 使用默认 debug keystore
+                storeFile = file("debug.keystore")
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
         }
     }
 
@@ -41,7 +51,6 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-
     buildTypes {
         getByName("debug") {
             isMinifyEnabled = false
@@ -51,7 +60,6 @@ android {
                 "proguard-rules.pro"
             )
         }
-
         release {
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
@@ -61,7 +69,6 @@ android {
                 "proguard-rules.pro"
             )
         }
-
     }
 
     compileOptions {
@@ -92,12 +99,8 @@ dependencies {
     implementation(libs.material)
     implementation(libs.constraintlayout)
     implementation(libs.gson)
-
-
     implementation(libs.oapi.sdk)
     implementation(libs.dingtalk)
-
-
     // LangChain4j (exclude JDK http-client, use OkHttp adapter for Android)
     implementation(libs.langchain4j.core)
     implementation(libs.langchain4j.openai) {
@@ -119,15 +122,10 @@ dependencies {
     implementation(libs.glide)
     implementation(libs.glide.transformations)
     implementation(libs.easyfloat)
-
-
     // ZXing 二维码/条形码扫描
     implementation(libs.zxing)
-
     // NanoHTTPD 嵌入式 HTTP 服务器（局域网配置服务）
     implementation(libs.nanohttpd)
-
-
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -151,7 +149,6 @@ fun getVersionGit(): String {
     val reader1 = BufferedReader(InputStreamReader(process1.inputStream))
     val branch = reader1.readLine()?.trim()
     reader1.close()
-
     val process2 = Runtime.getRuntime().exec("git rev-parse HEAD")
     val reader2 = BufferedReader(InputStreamReader(process2.inputStream))
     val sha1 = reader2.readLine()?.trim()
